@@ -29,7 +29,7 @@ import (
 var (
 	gitVersion = "dev"
 	kubeconfig = flag.String("kubeconfig", "", "kubernetes config")
-	namespace  = flag.String("namespace", os.Getenv("MY_POD_NAMESPACE"), "pod namespace")
+	namespace  = flag.String("namespace", os.Getenv("POD_NAMESPACE"), "pod namespace")
 	pod        = flag.String("pod", os.Getenv("HOSTNAME"), "pod name")
 	podLabel   = flag.String("podLabel", "nodeZone", "pod label to set")
 	label      = flag.String("label", "topology.kubernetes.io/zone", "node label")

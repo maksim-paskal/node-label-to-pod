@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-label-to-pod
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: node-label-to-pod
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: node-label-to-pod
+roleRef:
+  kind: Role
+  name: node-label-to-pod
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: node-label-to-pod
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-label-to-pod
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-label-to-pod
+subjects:
+- kind: ServiceAccount
+  name: node-label-to-pod
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: node-label-to-pod
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-label-to-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-label-to-pod
+  template:
+    metadata:
+      labels:
+        app: node-label-to-pod
+    spec:
+      serviceAccountName: node-label-to-pod
+      volumes:
+      - name: podinfo
+        downwardAPI:
+          items:
+          - path: "labels"
+            fieldRef:
+              fieldPath: metadata.labels
+          - path: "annotations"
+            fieldRef:
+              fieldPath: metadata.annotations
+      initContainers:
+      - name: node-label-to-pod
+        image: paskalmaksim/node-label-to-pod:dev
+        imagePullPolicy: Always
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      containers:
+      - name: test
+        image: alpine:3
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -ex
+
+          printenv
+          cat /etc/podinfo/labels
+
+          sleep 1d
+        env:
+        - name: NODE_ZONE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['nodeZone']
+        volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
